@@ -1,0 +1,101 @@
+
+-- ________ drop table statements ________
+
+DROP TABLE IF EXISTS hashtags_posts;
+DROP TABLE IF EXISTS hashtags;
+DROP TABLE IF EXISTS followers;
+DROP TABLE IF EXISTS photo_tags;
+DROP TABLE IF EXISTS caption_tags;
+DROP TABLE IF EXISTS likes;
+DROP TABLE IF EXISTS comments;
+DROP TABLE IF EXISTS posts;
+DROP TABLE IF EXISTS users;
+
+
+-- ________ create table statements ________
+
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    username VARCHAR(63),
+    bio VARCHAR(511),
+    avatar VARCHAR(255),
+    phone VARCHAR(31),
+    email VARCHAR(127),
+    password VARCHAR(63),
+    status VARCHAR(31),
+    CHECK(COALESCE(phone, email) IS NOT NULL)
+);
+
+CREATE TABLE posts (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    url VARCHAR(255) NOT NULL,
+    caption VARCHAR(255),
+    lat REAL CHECK(lat IS NULL OR (lat >= -90 AND lat <= 90)),
+    lng REAL CHECK(lng IS NULL OR (lng >= -180 AND lng <= 180)),
+    user_id INTEGER NOT NULL REFERENCES users(id)
+);
+
+CREATE TABLE comments (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    contents VARCHAR(240) NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE likes (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+    comment_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
+    CHECK(
+        COALESCE((post_id)::BOOLEAN::INTEGER, 0) +
+        COALESCE((comment_id)::BOOLEAN::INTEGER, 0) = 1
+    )
+);
+
+CREATE TABLE photo_tags (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    x INTEGER NOT NULL,
+    y INTEGER NOT NULL,
+    UNIQUE(user_id, post_id)
+);
+
+CREATE TABLE caption_tags (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    UNIQUE(user_id, post_id)
+);
+
+CREATE TABLE hashtags (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    title VARCHAR(63) NOT NULL UNIQUE
+);
+
+CREATE TABLE hashtags_posts (
+    id SERIAL PRIMARY KEY,
+    hashtag_id INTEGER NOT NULL REFERENCES hashtags(id) ON DELETE CASCADE,
+    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    UNIQUE(hashtag_id, post_id)
+);
+
+CREATE TABLE followers (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    leader_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    follower_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(leader_id, follower_id)
+);
